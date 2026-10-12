@@ -1,12 +1,8 @@
+import { supabase } from '../lib/supabase';
 import { Libro } from "../models/Libro";
 
 export class LibroRepository {
   private static instancia: LibroRepository;
-
-  private libros: Libro[] = [
-    new Libro(1, "El Principito", "Antoine de Saint-Exupéry", 1943),
-    new Libro(2, "Don Quijote", "Miguel de Cervantes", 1605)
-  ];
 
   private constructor() {}
 
@@ -14,21 +10,52 @@ export class LibroRepository {
     if (!LibroRepository.instancia) {
       LibroRepository.instancia = new LibroRepository();
     }
-
     return LibroRepository.instancia;
   }
 
-  public obtenerLibros(): Libro[] {
-    return this.libros;
-  }
+  public async obtenerLibros(): Promise<Libro[]> {
+    const { data, error } = await supabase
+      .from('libros')
+      .select('*')
+      .order('id', { ascending: false });
 
-  public agregarLibro(libro: Libro): void {
-    this.libros.push(libro);
-  }
+    if (error) {
+      console.error('Error al obtener libros:', error.message);
+      throw error;
+    }
 
-  public eliminarLibro(id: number): void {
-    this.libros = this.libros.filter(
-      libro => libro.getId() !== id
+    return (data || []).map(
+      (item: any) => new Libro(item.id, item.titulo, item.autor, item.anio)
     );
+  }
+
+  // Recibe directamente una instancia de la clase Libro
+  public async agregarLibro(libro: Libro): Promise<void> {
+    const { error } = await supabase
+      .from('libros')
+      .insert([
+        {
+          titulo: libro.getTitulo(),
+          autor: libro.getAutor(),
+          anio: libro.getAnio(),
+        },
+      ]);
+
+    if (error) {
+      console.error('Error al agregar libro:', error.message);
+      throw error;
+    }
+  }
+
+  public async eliminarLibro(id: number): Promise<void> {
+    const { error } = await supabase
+      .from('libros')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error al eliminar libro:', error.message);
+      throw error;
+    }
   }
 }
